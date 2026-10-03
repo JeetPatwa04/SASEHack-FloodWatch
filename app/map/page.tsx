@@ -214,24 +214,32 @@ export default function InteractiveMap() {
         {/* Scoreboard */}
         {scores && (
           <div className="mx-auto mt-6 max-w-6xl rounded-[40px] bg-[#ffa600] p-6">
-            <div className="mb-1 font-potta text-xl text-navy">HOW ACCURATE IS OUR MODEL?</div>
-            <div className="font-bold mono-flood text-md text-navy mb-4">Our ML model vs the &quot;no-change&quot; baseline</div>
+            <div className="mb-1 font-potta text-xl text-navy">HOW WELL DOES OUR MODEL LEARN THE RIVER?</div>
+            <div className="font-bold mono-flood text-md text-navy mb-4">
+              {g?.name ?? "Select a gauge"} — average error vs simply assuming the river stays where it is
+            </div>
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
               {scoreHorizons.map(h => {
                 const row = scores.horizons[h];
                 if (!row) return null;
                 return (
                   <div key={h} className="rounded-[24px] bg-white p-4">
+                    <div className="font-bold mono-flood text-xs text-[#17496c]/60 mb-1 truncate" title={g?.name}>{g?.name ?? ""}</div>
                     <div className="font-potta text-xs text-[#17496c]/80 mb-1">{h}H AHEAD</div>
-                    <div className="font-potta text-2xl text-[#17496c]">+{row.skill_pct.toFixed(0)}%</div>
-                    <div className="font-bold mono-flood text-xs text-[#17496c]/80 mt-1">lower error than no-change</div>
+                    <div className="font-potta text-2xl text-[#17496c]">{row.mae_ours.toFixed(2)} ft</div>
+                    <div className="font-bold mono-flood text-xs text-[#17496c]/80 mt-1">our average error</div>
                     <div className="mt-2 space-y-1">
-                      <div className="font-bold mono-flood text-xs text-[#17496c]/80">Our error: <span className="font-bold text-[#17496c]">{row.mae_ours.toFixed(2)} ft</span></div>
                       <div className="font-bold mono-flood text-xs text-[#17496c]/80">No-change baseline: <span className="font-bold text-[#17496c]">{row.mae_persistence.toFixed(2)} ft</span></div>
+                      <div className="font-bold mono-flood text-xs text-[#17496c]/80">That is <span className="font-bold text-[#17496c]">{row.skill_pct.toFixed(0)}% less error</span></div>
                     </div>
                   </div>
                 );
               })}
+            </div>
+            <div className="font-bold mono-flood text-xs text-navy/80 mt-4">
+              Tested on the last 2 years of readings the model never saw. The baseline is the simplest honest forecast: assume the river
+              does not change. These numbers are not a comparison with the National Weather Service — for that, see the forecast chart above,
+              where both forecasts are drawn together.
             </div>
           </div>
         )}
