@@ -14,9 +14,9 @@ const CATEGORY_COLOR: Record<string, string> = {
 };
 
 // CARTO Voyager without labels: a coloured street map with no place or building names.
-// A free key (carto.com/basemaps/apikey) removes the "API key required" watermark.
-// Set NEXT_PUBLIC_CARTO_KEY in .env.local for local work and in Vercel's project settings for the live site.
-const CARTO_KEY = process.env.NEXT_PUBLIC_CARTO_KEY;
+// Public map key from carto.com/basemaps/apikey. It is visible in the browser by design;
+// free for non-commercial use up to 5 million tile requests a month.
+const CARTO_KEY = "cb1_490v_1_e622bfc64a309167c5086d68";
 const CARTO_URL = "https://{s}.basemaps.cartocdn.com/rastertiles/voyager_nolabels/{z}/{x}/{y}{r}.png"
   + (CARTO_KEY ? `?key=${CARTO_KEY}` : "");
 const CARTO_ATTRIB = "&copy; OpenStreetMap contributors, &copy; CARTO";
