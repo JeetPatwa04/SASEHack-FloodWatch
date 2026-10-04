@@ -1,6 +1,7 @@
 "use client";
-import { MapContainer, TileLayer, CircleMarker, Popup } from "react-leaflet";
-import type { LatLngExpression } from "leaflet";
+import { useEffect, useRef } from "react";
+import { MapContainer, TileLayer, CircleMarker, Popup, useMap } from "react-leaflet";
+import type { LatLngBoundsExpression, LatLngExpression, LatLngTuple } from "leaflet";
 
 type GaugeSummary = {
   site_id: string; name: string; latitude: number; longitude: number;
@@ -12,51 +13,67 @@ const CATEGORY_COLOR: Record<string, string> = {
   none: "#4caf82", action: "#ffa600", minor: "#ff9800", moderate: "#e05555", major: "#b91c1c",
 };
 
-// USGS National Map tiles (public domain). ArcGIS tile URLs use {z}/{y}/{x} order, not {z}/{x}/{y}.
-const USGS = "https://basemap.nationalmap.gov/arcgis/rest/services";
-const USGS_ATTRIB = "Hydrography &amp; relief: USGS The National Map";
+// CARTO Voyager without labels: a coloured street map with no place or building names.
+// A free key (carto.com/basemaps/apikey) removes the "API key required" watermark.
+// Set NEXT_PUBLIC_CARTO_KEY in .env.local for local work and in Vercel's project settings for the live site.
+const CARTO_KEY = process.env.NEXT_PUBLIC_CARTO_KEY;
+const CARTO_URL = "https://{s}.basemaps.cartocdn.com/rastertiles/voyager_nolabels/{z}/{x}/{y}{r}.png"
+  + (CARTO_KEY ? `?key=${CARTO_KEY}` : "");
+const CARTO_ATTRIB = "&copy; OpenStreetMap contributors, &copy; CARTO";
 
-// The relief tiles are grey, so we tint them green for land. The river layer is left untinted
-// so water stays blue. Adjust hue-rotate to change the land colour (see the comments below).
-const TINT = `
-.floodwatch-relief { filter: sepia(0.55) saturate(1.7) hue-rotate(55deg) brightness(1.04) contrast(0.95); }
-`;
+// USGS rivers and lakes drawn on top (public domain). ArcGIS URLs use {z}/{y}/{x} order.
+const HYDRO_URL = "https://basemap.nationalmap.gov/arcgis/rest/services/USGSHydroCached/MapServer/tile/{z}/{y}/{x}";
+
+// Shown only until the gauges arrive, then FitToGauges takes over.
+const FALLBACK_CENTER: LatLngExpression = [37.3, -79.6];
+const FALLBACK_ZOOM = 7;
+
+/** Frame the map on the gauges once they load, so it opens on our rivers rather than half the coast. */
+function FitToGauges({ gauges }: { gauges: GaugeSummary[] }) {
+  const map = useMap();
+  const done = useRef(false);
+  useEffect(() => {
+    if (done.current || gauges.length === 0) return;
+    const bounds: LatLngBoundsExpression = gauges.map((g) => [g.latitude, g.longitude] as LatLngTuple);
+    map.fitBounds(bounds, { padding: [45, 45], maxZoom: 9 });
+    done.current = true;   // only on first load, so panning is not undone by a refresh
+  }, [gauges, map]);
+  return null;
+}
 
 export default function GaugeMap({ gauges, selectedId, onSelect }: {
   gauges: GaugeSummary[]; selectedId: string | null; onSelect: (id: string) => void;
 }) {
-  const center: LatLngExpression = [37.2, -80.0];
   return (
-    <>
-      <style>{TINT}</style>
-      <MapContainer center={center} zoom={7} scrollWheelZoom={false}
-        className="h-full w-full rounded-blob-sm" style={{ background: "#dbeafe" }}>
-        {/* Land: shaded terrain, tinted green by the CSS above */}
-        <TileLayer
-          attribution={USGS_ATTRIB}
-          url={`${USGS}/USGSShadedReliefOnly/MapServer/tile/{z}/{y}/{x}`}
-          className="floodwatch-relief"
-          maxZoom={15}
-        />
-        {/* Water: rivers and lakes from the National Hydrography Dataset, drawn on top */}
-        <TileLayer
-          attribution={USGS_ATTRIB}
-          url={`${USGS}/USGSHydroCached/MapServer/tile/{z}/{y}/{x}`}
-          opacity={0.95}
-          zIndex={400}
-        />
-        {gauges.map((g) => (
-          <CircleMarker
-            key={g.site_id}
-            center={[g.latitude, g.longitude]}
-            radius={g.site_id === selectedId ? 12 : 8}
-            pathOptions={{ color: "#17496c", weight: 2, fillColor: CATEGORY_COLOR[g.risk.category] ?? "#4caf82", fillOpacity: 0.9 }}
-            eventHandlers={{ click: () => onSelect(g.site_id) }}
-          >
-            <Popup><strong>{g.name}</strong><br />{g.current.stage_ft.toFixed(2)} ft — {g.risk.category}</Popup>
-          </CircleMarker>
-        ))}
-      </MapContainer>
-    </>
+    <MapContainer center={FALLBACK_CENTER} zoom={FALLBACK_ZOOM} scrollWheelZoom={false}
+      className="h-full w-full rounded-blob-sm" style={{ background: "#dbeafe" }}>
+      <FitToGauges gauges={gauges} />
+      <TileLayer
+        attribution={CARTO_ATTRIB}
+        url={CARTO_URL}
+        subdomains="abcd"
+        maxZoom={20}
+      />
+      {/* Rivers and lakes, so water stands out more than the base map draws it */}
+      <TileLayer
+        attribution="Hydrography: USGS The National Map"
+        url={HYDRO_URL}
+        opacity={0.85}
+        maxNativeZoom={16}
+        maxZoom={20}
+        zIndex={400}
+      />
+      {gauges.map((g) => (
+        <CircleMarker
+          key={g.site_id}
+          center={[g.latitude, g.longitude]}
+          radius={g.site_id === selectedId ? 12 : 8}
+          pathOptions={{ color: "#17496c", weight: 2, fillColor: CATEGORY_COLOR[g.risk.category] ?? "#4caf82", fillOpacity: 0.95 }}
+          eventHandlers={{ click: () => onSelect(g.site_id) }}
+        >
+          <Popup><strong>{g.name}</strong><br />{g.current.stage_ft.toFixed(2)} ft — {g.risk.category}</Popup>
+        </CircleMarker>
+      ))}
+    </MapContainer>
   );
 }
