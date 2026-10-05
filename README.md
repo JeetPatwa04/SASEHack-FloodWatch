@@ -37,8 +37,3 @@ USGS Water Data API: observed streamflow and gauge height
 NWPS API: official forecasts and flood thresholds
 National Water Model: historical and forecast streamflow
 Open-Meteo: historical and forecast rainfall
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
-# SASEHack-Flood-Prediction-Project
